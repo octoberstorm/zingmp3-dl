@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"sync"
 	"testing"
 )
 
@@ -36,8 +37,11 @@ func TestDownloadSong(t *testing.T) {
 	filename := "Maroc-7-The-Shadows.mp3"
 	downloadDir := "/tmp/"
 
-	song := Song{URL: url, DownloadDir: downloadDir}
-	song.Download()
+	song, _ := NewSong(url, downloadDir)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go song.Download(&wg)
+	wg.Wait()
 
 	file, err := os.Open(downloadDir + filename)
 	if err != nil {
@@ -51,7 +55,8 @@ func TestDownloadSong(t *testing.T) {
 }
 
 func TestAlbumSongList(t *testing.T) {
-	albumUrl := "http://mp3.zing.vn/album/Romantic-Guitar-Various-Artists/ZWZA09UC.html"
-	downloadDir := "/tmp"
-	album := NewAlbum(albumUrl, downloadDir)
+	// albumUrl := "http://mp3.zing.vn/album/Romantic-Guitar-Various-Artists/ZWZA09UC.html"
+	// downloadDir := "/tmp"
+	// album := NewAlbum(albumUrl, downloadDir)
+
 }

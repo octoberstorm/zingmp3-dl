@@ -49,3 +49,9 @@ func TestDownloadSong(t *testing.T) {
 		t.Error("Downloaded file is zero length.")
 	}
 }
+
+func TestAlbumSongList(t *testing.T) {
+	albumUrl := "http://mp3.zing.vn/album/Romantic-Guitar-Various-Artists/ZWZA09UC.html"
+	downloadDir := "/tmp"
+	album := NewAlbum(albumUrl, downloadDir)
+}

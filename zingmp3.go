@@ -1,5 +1,7 @@
 package main
 
+// TODO fix verbose messages on album download related to goroutines, go channel?
+
 import (
 	"bytes"
 	"errors"
@@ -11,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sync"
 	"time"
 )
 
@@ -32,6 +35,8 @@ type Song struct {
 	Code        string
 	Title       string
 }
+
+var wg sync.WaitGroup
 
 var timeout = time.Duration(5 * time.Second)
 var transport = http.Transport{
@@ -83,7 +88,7 @@ func (s *Song) ParseURL() error {
 	}
 
 	matches := r.FindStringSubmatch(s.URL)
-	fmt.Println(matches)
+
 	s.Title = matches[1]
 	s.Code = matches[2]
 	return nil
@@ -97,7 +102,8 @@ func (s *Song) Path() string {
 	return s.DownloadDir + s.FileName()
 }
 
-func (s *Song) Download() error {
+func (s *Song) Download(wg *sync.WaitGroup) error {
+	defer wg.Done()
 
 	downloadURL := DOWNLOAD_URL_PRE + s.Code
 
@@ -130,6 +136,7 @@ func (s *Song) Download() error {
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Printf("Song downloaded to %v. Copied %v bytes\n", s.Path(), n)
 	return nil
 }
@@ -216,7 +223,9 @@ func main() {
 			return
 		}
 
-		song.Download()
+		wg.Add(1)
+		go song.Download(&wg)
+		wg.Wait()
 	} else if linkType == "album" {
 		fmt.Println("Album detected")
 
@@ -235,8 +244,10 @@ func main() {
 				fmt.Println(err.Error())
 				continue
 			}
-			song.Download()
+			wg.Add(1)
+			go song.Download(&wg)
 		}
+		wg.Wait()
 	}
-	// fmt.Println(song.FileName())
+
 }

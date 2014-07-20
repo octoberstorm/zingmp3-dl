@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/octoberstorm/zingmp3-dl/zingmp3"
 	"os"
+	"runtime"
 )
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	currentDir, _ := os.Getwd()
 
 	downloadDir := flag.String("dir", currentDir+"/", "Download Directory")

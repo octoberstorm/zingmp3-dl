@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/cheggaaa/pb"
 	"github.com/moovweb/gokogiri"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -199,17 +201,25 @@ func getFinalLink(songCode string) (string, error) {
 
 func (d *Downloader) Download() {
 	links := d.DownloadLinks()
+	// channels := make([]chan int, len(links))
 	wg.Add(len(links))
 
 	for i := range links {
 		link := links[i]
+		// channels[i] = make(chan int)
 		// TODO handle error
 		go d.RunDownload(link, &wg)
 	}
 	wg.Wait()
+
+	fmt.Println("")
+
 }
 
 func (d *Downloader) RunDownload(link string, wg *sync.WaitGroup) error {
+	var source io.Reader
+	var sourceSize int64
+
 	defer wg.Done()
 
 	codeReg, err := regexp.Compile(`bai-hat/(.*)/([A-Z0-9]+)\.html$`)
@@ -234,7 +244,6 @@ func (d *Downloader) RunDownload(link string, wg *sync.WaitGroup) error {
 	out, err := os.Create(path)
 	defer out.Close()
 
-	fmt.Printf("Downloading %v...\n", link)
 	resp, err := client.Get(finalLink)
 	defer resp.Body.Close()
 
@@ -242,10 +251,26 @@ func (d *Downloader) RunDownload(link string, wg *sync.WaitGroup) error {
 		return err
 	}
 
-	n, err := io.Copy(out, resp.Body)
+	i, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
+	sourceSize = int64(i)
+	source = resp.Body
+	// create bar
+	bar := pb.StartNew(int(sourceSize)).SetUnits(pb.U_BYTES).SetRefreshRate(time.Millisecond * 10)
+	bar.ShowSpeed = true
+
+	// fmt.Printf("Downloading %v...\n", link)
+	// create multi writer
+	writer := io.MultiWriter(out, bar)
+
+	// and copy
+	_, err = io.Copy(writer, source)
+	bar.Increment()
+
+	bar.Finish()
+	print("")
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Song downloaded to %v. Copied %v bytes\n", path, n)
+	// fmt.Printf("Song downloaded to %v. Copied %v bytes\n", path, n)
 	return nil
 }

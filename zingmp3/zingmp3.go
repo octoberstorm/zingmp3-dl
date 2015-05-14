@@ -28,7 +28,7 @@ import (
 const (
 	ZING_URL                     = `^http:\/\/mp3.zing.vn\/(.*)\/(.*)\/(.*)\.html$`
 	ALBUM_SINGLE_SONG_LINK_XPATH = `//*[@id="_plContainer"]//a[@class="single-play"]`
-	FINAL_LINK_PRE               = "http://mp3.zing.vn/download/vip/song/"
+	FINAL_LINK_PRE               = "http://v3.mp3.zing.vn/download/vip/song/"
 )
 
 type Downloader struct {

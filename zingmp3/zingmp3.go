@@ -201,7 +201,7 @@ func songUrlsFromAlbum(albumHTMLContent []byte) ([]string, error) {
 
 // Get final redirected link
 func getFinalLink(songUrl string) (string, error) {
-	fmt.Println("Song URL: ", songUrl)
+	fmt.Println("Downloading: ", songUrl)
 
 	downloadURLResp, err := client.Get(songUrl)
 	defer downloadURLResp.Body.Close()
@@ -220,7 +220,7 @@ func getFinalLink(songUrl string) (string, error) {
 	}
 
 	xmlUrl := xmlUrlR.FindStringSubmatch(songContent)[1]
-	fmt.Println(xmlUrl)
+	// fmt.Println(xmlUrl)
 
 	xmlContentResp, err := client.Get(xmlUrl)
 	if err != nil {

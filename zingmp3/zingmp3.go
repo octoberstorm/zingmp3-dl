@@ -1,7 +1,10 @@
 package zingmp3
 
+// TODO clean not in-use code
+
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/cheggaaa/pb"
@@ -39,6 +42,23 @@ type Downloader struct {
 
 	// Config for downloader, e.g. network timeout, create new dir...
 	Config map[string]interface{}
+}
+
+type SongData struct {
+	Id          string
+	Name        string
+	Artist      string
+	Link        string
+	Cover       string
+	Qualities   []string
+	Source_list []string
+	Source_base string
+	Lyric       string
+}
+
+type XmlData struct {
+	Msg  string
+	Data []SongData
 }
 
 var wg sync.WaitGroup
@@ -180,23 +200,46 @@ func songUrlsFromAlbum(albumHTMLContent []byte) ([]string, error) {
 }
 
 // Get final redirected link
-func getFinalLink(songCode string) (string, error) {
-	downloadURL := FINAL_LINK_PRE + songCode
+func getFinalLink(songUrl string) (string, error) {
+	fmt.Println("Song URL: ", songUrl)
 
-	downloadURLResp, err := client.Get(downloadURL)
+	downloadURLResp, err := client.Get(songUrl)
+	defer downloadURLResp.Body.Close()
 	if err != nil {
 		return "", err
 	}
 
-	realURL := downloadURLResp.Request.URL.String()
-	regx, err := regexp.Compile(`(.*)\?filename=.*`)
+	songContentBuf := new(bytes.Buffer)
+	songContentBuf.ReadFrom(downloadURLResp.Body)
+	songContent := songContentBuf.String()
+
+	xmlUrlR := regexp.MustCompile(`data-xml="(.*)" class`)
+
+	if !xmlUrlR.MatchString(songContent) {
+		return "", errors.New("XML url not found")
+	}
+
+	xmlUrl := xmlUrlR.FindStringSubmatch(songContent)[1]
+	fmt.Println(xmlUrl)
+
+	xmlContentResp, err := client.Get(xmlUrl)
 	if err != nil {
 		return "", err
 	}
 
-	finalURLMatch := regx.FindStringSubmatch(realURL)
-	finalURL := finalURLMatch[1]
-	return finalURL, nil
+	xmlContentBuf := new(bytes.Buffer)
+	xmlContentBuf.ReadFrom(xmlContentResp.Body)
+	jsonData := xmlContentBuf.String()
+
+	var xmlData XmlData
+
+	err = json.Unmarshal([]byte(jsonData), &xmlData)
+	if err != nil {
+		return "", err
+	}
+	finalUrl := "http://" + xmlData.Data[0].Source_list[0]
+
+	return finalUrl, nil
 }
 
 func (d *Downloader) Download() {
@@ -233,9 +276,9 @@ func (d *Downloader) RunDownload(link string, wg *sync.WaitGroup) error {
 	}
 
 	title := matches[1]
-	code := matches[2]
+	// code := matches[2]
 
-	finalLink, err := getFinalLink(code)
+	finalLink, err := getFinalLink(link)
 	if err != nil {
 		return err
 	}

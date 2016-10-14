@@ -30,7 +30,7 @@ import (
 // err := d.Download()
 const (
 	ZING_URL                     = `^http:\/\/mp3.zing.vn\/(.*)\/(.*)\/(.*)\.html$`
-	ALBUM_SINGLE_SONG_LINK_XPATH = `//*[@id="_plContainer"]//a[@class="single-play"]`
+	ALBUM_SINGLE_SONG_LINK_XPATH = `//div[@id="playlistItems"]//a[@class="fn-name"]`
 	FINAL_LINK_PRE               = "http://v3.mp3.zing.vn/download/vip/song/"
 )
 
@@ -189,7 +189,8 @@ func songUrlsFromAlbum(albumHTMLContent []byte) ([]string, error) {
 	for i := range hrefs {
 		v := hrefs[i].Attribute("href")
 		if v != nil {
-			matched, _ := regexp.MatchString(`^\/bai-hat/.*\.html`, v.String())
+			// http://mp3.zing.vn/bai-hat/Fly-Me-To-The-Moon-Westlife/ZWZ9BCIB.html
+			matched, _ := regexp.MatchString(`\/bai-hat\/.*/.*\.html`, v.String())
 			if matched {
 				links = append(links, v.String())
 			}
@@ -201,8 +202,6 @@ func songUrlsFromAlbum(albumHTMLContent []byte) ([]string, error) {
 
 // Get final redirected link
 func getFinalLink(songUrl string) (string, error) {
-	fmt.Println("Downloading: ", songUrl)
-
 	downloadURLResp, err := client.Get(songUrl)
 	defer downloadURLResp.Body.Close()
 	if err != nil {
@@ -237,7 +236,17 @@ func getFinalLink(songUrl string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	finalUrl := "http://" + xmlData.Data[0].Source_list[0]
+
+	url := xmlData.Data[0].Source_list[0]
+	if url == "" {
+		url = xmlData.Data[0].Source_list[1]
+	}
+
+	if url == "" {
+		return "", errors.New("Invalid Song URL")
+	}
+
+	finalUrl := "http://" + url
 
 	return finalUrl, nil
 }
@@ -283,7 +292,9 @@ func (d *Downloader) RunDownload(link string, wg *sync.WaitGroup) error {
 		return err
 	}
 
-	path := d.DownloadDir + title + ".mp3"
+	filename := title + ".mp3"
+
+	path := d.DownloadDir + filename
 	out, err := os.Create(path)
 	defer out.Close()
 
@@ -298,7 +309,9 @@ func (d *Downloader) RunDownload(link string, wg *sync.WaitGroup) error {
 	sourceSize = int64(i)
 	source = resp.Body
 	// create bar
-	bar := pb.StartNew(int(sourceSize)).SetUnits(pb.U_BYTES).SetRefreshRate(time.Millisecond * 10)
+	bar := pb.StartNew(int(sourceSize)).
+		SetUnits(pb.U_BYTES).SetRefreshRate(time.Millisecond * 10).
+		Prefix("[" + filename + "] ")
 	bar.ShowSpeed = true
 
 	// fmt.Printf("Downloading %v...\n", link)

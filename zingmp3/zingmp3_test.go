@@ -47,7 +47,7 @@ func TestValidSongUrlInfo(t *testing.T) {
 		t.Errorf("Total links is not correct, expected 11, was %v", len(d.DownloadLinks()))
 	}
 
-	secondLink := "/bai-hat/Johnny-Guitar-Various-Artists/ZW60ZEAW.html"
+	secondLink := "http://mp3.zing.vn/bai-hat/Johnny-Guitar-Various-Artists/ZW60ZEAW.html"
 	if d.DownloadLinks()[1] != secondLink {
 		t.Errorf("Wrong link, expected %v, was %v", secondLink, d.DownloadLinks()[1])
 	}
@@ -78,8 +78,8 @@ func TestDownload(t *testing.T) {
 
 	filename := "Maroc-7-The-Shadows.mp3"
 	filepath := d.DownloadDir + filename
-	fmt.Println(filepath)
-	return
+	fmt.Println("Downloading to ", filepath)
+
 	file, err := os.Open(filepath)
 	if err != nil {
 		t.Errorf("Download failed: %v\n", err.Error())
